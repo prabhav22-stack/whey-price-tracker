@@ -12,7 +12,7 @@ from telegram.ext import (
 )
 
 from database import add_product, get_products, remove_product
-
+from price_checker import check_product
 
 # Load environment variables from .env
 load_dotenv()
@@ -377,11 +377,124 @@ async def check_command(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
+    telegram_id = update.effective_user.id
+
     await update.message.reply_text(
-        "🔍 Manual price checking is coming next.\n\n"
-        "Your tracked products are safely stored."
+        "🔍 Checking your tracked products..."
     )
 
+    try:
+        response = get_products(telegram_id)
+        products = response.data
+
+        if not products:
+            await update.message.reply_text(
+                "📭 You are not tracking any products yet.\n\n"
+                "Use /add to add one."
+            )
+            return
+
+        results = []
+
+        for product in products:
+            product_name = product.get(
+                "product_name",
+                "Unknown product",
+            )
+
+            website = product.get(
+                "website",
+                "Unknown website",
+            )
+
+            target_price = product.get("target_price")
+            product_url = product.get("product_url", "")
+
+            try:
+                result = check_product(product)
+
+                price = result.get("price")
+                available = result.get("available")
+                error = result.get("error")
+
+                if price is None:
+                    error_text = (
+                        error
+                        or "Price could not be detected."
+                    )
+
+                    results.append(
+                        f"📦 {product_name}\n"
+                        f"🛒 {website}\n"
+                        f"⚠️ {error_text}"
+                    )
+
+                    continue
+
+                price = float(price)
+
+                message = (
+                    f"📦 {product_name}\n"
+                    f"🛒 {website}\n"
+                    f"💰 Current price: ₹{price:g}\n"
+                )
+
+                if target_price is not None:
+                    target_price = float(target_price)
+
+                    message += (
+                        f"🎯 Target: ₹{target_price:g}\n"
+                    )
+
+                    if price <= target_price:
+                        message += (
+                            "🔥 TARGET PRICE REACHED!\n"
+                        )
+
+                    else:
+                        difference = price - target_price
+
+                        message += (
+                            f"📈 ₹{difference:g} above target\n"
+                        )
+
+                if available is False:
+                    message += "❌ Currently unavailable\n"
+
+                message += f"🔗 {product_url}"
+
+                results.append(message)
+
+            except Exception as error:
+                print(
+                    "Manual check error for product "
+                    f"{product.get('id')}: {error}"
+                )
+
+                results.append(
+                    f"📦 {product_name}\n"
+                    "❌ Could not check this product."
+                )
+
+        final_message = (
+            f"🔍 Checked {len(products)} tracked "
+            f"product(s)\n\n"
+            + "\n\n".join(results)
+            + "\n\n✅ Price check complete."
+        )
+
+        await update.message.reply_text(
+            final_message,
+            disable_web_page_preview=True,
+        )
+
+    except Exception as error:
+        print(f"Manual price check error: {error}")
+
+        await update.message.reply_text(
+            "❌ I could not check prices right now.\n\n"
+            "Please try again later."
+        )
 
 async def settings_command(
     update: Update,
