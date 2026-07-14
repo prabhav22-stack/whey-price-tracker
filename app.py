@@ -472,9 +472,26 @@ def main():
     app.add_handler(CommandHandler("check", check_command))
     app.add_handler(CommandHandler("settings", settings_command))
 
-    print("PriceWatch is running...")
+    port = int(os.environ.get("PORT", 10000))
+    render_external_url = os.environ.get("RENDER_EXTERNAL_URL")
 
-    app.run_polling()
+    if render_external_url:
+        webhook_url = f"{render_external_url}/telegram"
+
+        print("PriceWatch is starting in webhook mode...")
+        print(f"Webhook URL: {webhook_url}")
+
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=port,
+            url_path="telegram",
+            webhook_url=webhook_url,
+        )
+
+    else:
+        print("PriceWatch is running locally in polling mode...")
+
+        app.run_polling()
 
 
 if __name__ == "__main__":
