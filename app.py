@@ -500,12 +500,47 @@ async def settings_command(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
 ):
-    await update.message.reply_text(
-        "⚙️ PriceWatch Settings\n\n"
-        "⏱ Planned check interval: 15 minutes\n"
-        "🔔 Price alerts: Enabled\n"
-        "📍 Pincode tracking: Supported where applicable"
-    )
+    telegram_id = update.effective_user.id
+
+    try:
+        response = get_products(telegram_id)
+        products = response.data or []
+
+        active_products = len(products)
+
+        pincodes = sorted(
+            {
+                str(product["pincode"])
+                for product in products
+                if product.get("pincode")
+            }
+        )
+
+        if pincodes:
+            pincode_text = ", ".join(pincodes)
+        else:
+            pincode_text = "Not set"
+
+        await update.message.reply_text(
+            "⚙️ PriceWatch Settings\n\n"
+            f"📦 Active products: {active_products}\n"
+            "🔄 Automatic checking: Enabled\n"
+            "⏱ Check interval: Every 15 minutes\n"
+            "🔔 Target alerts: Enabled\n"
+            "🗄 Database: Connected\n"
+            "🤖 Bot status: Online\n\n"
+            f"📍 Saved pincodes: {pincode_text}\n\n"
+            "🧪 Version: PriceWatch V1"
+        )
+
+    except Exception as error:
+        print(f"Settings error: {error}")
+
+        await update.message.reply_text(
+            "⚙️ PriceWatch Settings\n\n"
+            "⚠️ Could not load live settings right now.\n\n"
+            "Please try again later."
+        )
 
 
 async def cancel(
