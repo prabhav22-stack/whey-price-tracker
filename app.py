@@ -424,9 +424,24 @@ async def check_command(
 
             try:
                 # Offload the blocking Playwright call to a background thread
-                loop = asyncio.get_running_loop()
-                with concurrent.futures.ProcessPoolExecutor(max_workers=1) as pool:
-                    result = await loop.run_in_executor(pool, check_product, product)
+                def run_isolated_check(prod):
+                import threading
+                import asyncio
+            
+                    res = {}
+                    def worker():
+                        # Force a completely blank event loop so Playwright doesn't panic
+                        asyncio.set_event_loop(asyncio.new_event_loop())
+                        res['data'] = check_product(prod)
+                        
+                    # Run the worker in a raw OS thread
+                    t = threading.Thread(target=worker)
+                    t.start()
+                    t.join()
+                    return res.get('data')
+
+        # Offload the raw thread so it doesn't block Telegram's main loop
+        result = await asyncio.to_thread(run_isolated_check, product)
 
                 price = result.get("price")
                 available = result.get("available")
