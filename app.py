@@ -27,23 +27,14 @@ WEBSITE, PRODUCT_URL, PRODUCT_NAME, TARGET_PRICE, PINCODE = range(5)
 
 
 WEBSITES = {
-
     "1": "Amul",
-
     "2": "Nakpro",
-
     "3": "Nutrabay",
-
     "4": "Amazon",
-
     "5": "Amazon Fresh",
-
     "6": "Flipkart",
-
     "7": "HyugaLife",
-
     "8": "HealthKart",
-
     "9": "MuscleBlaze",
 }
 
@@ -440,8 +431,8 @@ async def check_command(
                     t.join()
                     return res.get('data')
 
-        # Offload the raw thread so it doesn't block Telegram's main loop
-        result = await asyncio.to_thread(run_isolated_check, product)
+                # Offload the raw thread so it doesn't block Telegram's main loop
+                result = await asyncio.to_thread(run_isolated_check, product)
 
                 price = result.get("price")
                 available = result.get("available")
@@ -525,6 +516,7 @@ async def check_command(
             "❌ I could not check prices right now.\n\n"
             "Please try again later."
         )
+
 
 async def settings_command(
     update: Update,
