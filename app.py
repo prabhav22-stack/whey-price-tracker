@@ -1,3 +1,4 @@
+import concurrent.futures
 import asyncio
 import os
 
@@ -423,7 +424,9 @@ async def check_command(
 
             try:
                 # Offload the blocking Playwright call to a background thread
-                result = await asyncio.to_thread(check_product, product)
+                loop = asyncio.get_running_loop()
+                with concurrent.futures.ProcessPoolExecutor(max_workers=1) as pool:
+                    result = await loop.run_in_executor(pool, check_product, product)
 
                 price = result.get("price")
                 available = result.get("available")
