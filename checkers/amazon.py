@@ -1072,10 +1072,13 @@ def check_amazon_fresh(product: dict) -> dict:
         pincode=product["pincode"],
     )
    
-def check_price(product_url: str, pincode: str = None) -> dict:
+def check_price(product: dict) -> dict:
     """
-    Standard interface expected by PriceWatch bot.
+    Standard interface expected by PriceWatch router.
+    Extracts the string URL out of the database product dictionary.
     """
-    # Replace 'scrape_amazon_product' with whatever your main function 
-    # is actually named inside your checkers/amazon.py file!
-    return scrape_amazon_product(product_url)
+    url = product.get("product_url")
+    
+    # Replace 'scrape_amazon_product' with the exact name of your 
+    # actual main scraping function inside this file!
+    return scrape_amazon_product(url)
