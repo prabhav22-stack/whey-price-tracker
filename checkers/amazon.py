@@ -174,13 +174,21 @@ class AmazonFreshBrowser:
         self.context = None
         self.page = None
 
-    def start(self):
+   def start(self):
 
         self.playwright = sync_playwright().start()
 
         self.browser = self.playwright.chromium.launch(
             headless=self.headless,
             slow_mo=150,
+            args=[
+                '--disable-dev-shm-usage',
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-gpu',
+                '--single-process',
+                '--blink-settings=imagesEnabled=false'
+            ]
         )
 
         self.context = self.browser.new_context(
