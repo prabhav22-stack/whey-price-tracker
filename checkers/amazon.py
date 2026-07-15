@@ -1066,12 +1066,16 @@ def check_amazon_fresh(product: dict) -> dict:
     Adapter so PriceWatch can call Amazon Fresh
     exactly like every other checker.
     """
-    pincode = product.get("pincode")
-    
-    if not pincode:
-        return {"error": "Amazon Fresh requires a delivery pincode. Please re-add the product."}
 
     return check_fresh_price(
         product_url=product["product_url"],
-        pincode=str(pincode), # Cast to string to prevent Playwright crashes
+        pincode=product["pincode"],
     )
+   
+def check_price(product_url: str, pincode: str = None) -> dict:
+    """
+    Standard interface expected by PriceWatch bot.
+    """
+    # Replace 'scrape_amazon_product' with whatever your main function 
+    # is actually named inside your checkers/amazon.py file!
+    return scrape_amazon_product(product_url)

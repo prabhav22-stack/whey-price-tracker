@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 from dotenv import load_dotenv
@@ -25,14 +26,24 @@ WEBSITE, PRODUCT_URL, PRODUCT_NAME, TARGET_PRICE, PINCODE = range(5)
 
 
 WEBSITES = {
+
     "1": "Amul",
+
     "2": "Nakpro",
+
     "3": "Nutrabay",
-    "4": "Amazon India",
-    "5": "Flipkart",
-    "6": "HyugaLife",
-    "7": "HealthKart",
-    "8": "MuscleBlaze",
+
+    "4": "Amazon",
+
+    "5": "Amazon Fresh",
+
+    "6": "Flipkart",
+
+    "7": "HyugaLife",
+
+    "8": "HealthKart",
+
+    "9": "MuscleBlaze",
 }
 
 
@@ -97,7 +108,7 @@ async def receive_website(
     if choice not in WEBSITES:
         await update.message.reply_text(
             "❌ Invalid option.\n\n"
-            "Please send a number from 1 to 8."
+            "Please send a number from 1 to 9."
         )
         return WEBSITE
 
@@ -411,7 +422,8 @@ async def check_command(
             product_url = product.get("product_url", "")
 
             try:
-                result = check_product(product)
+                # Offload the blocking Playwright call to a background thread
+                result = await asyncio.to_thread(check_product, product)
 
                 price = result.get("price")
                 available = result.get("available")

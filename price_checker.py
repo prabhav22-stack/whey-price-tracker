@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 
 from checkers.generic import check_generic
 from checkers.nakpro import check_nakpro
+from checkers.amazon import check_price as check_amazon
+from checkers.amazon_fresh import check_amazon_fresh
 
 from database import (
     add_price_history,
@@ -26,17 +28,19 @@ if not BOT_TOKEN:
 
 CHECKERS = {
     "nakpro": check_nakpro,
+    "amazon": check_amazon,
+    "amazon_fresh": check_amazon_fresh,
 }
 
 
 def get_checker(website: str):
-    website_key = website.strip().lower()
+    # Convert to lowercase and replace spaces with underscores
+    website_key = website.strip().lower().replace(" ", "_")
 
     return CHECKERS.get(
         website_key,
         check_generic,
     )
-
 
 def check_product(product: dict) -> dict:
     website = product.get(
