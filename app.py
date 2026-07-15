@@ -425,8 +425,8 @@ async def check_command(
             try:
                 # Offload the blocking Playwright call to a background thread
                 def run_isolated_check(prod):
-                import threading
-                import asyncio
+                    import threading
+                    import asyncio
             
                     res = {}
                     def worker():
