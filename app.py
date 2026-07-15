@@ -39,52 +39,41 @@ WEBSITES = {
 
 
 # ---------------------------------------------------------------------
-# ISOLATED PLAYWRIGHT THREAD (OPTIMIZED)
+# ISOLATED PLAYWRIGHT THREAD (OPTIMIZED FOR RENDER)
 # ---------------------------------------------------------------------
 def run_isolated_check(prod):
     """
-    Runs the blocking Playwright scraper in a completely isolated OS thread.
-    Includes strict garbage collection and crash prevention.
+    Runs the blocking Playwright scraper safely.
+    Since `asyncio.to_thread` already places this execution in a background thread, 
+    we DO NOT need to spawn a manual `threading.Thread`, which saves memory and prevents deadlocks.
     """
-    import threading
     import asyncio
     
-    res = {}
+    # Initialize a clean event loop for Playwright in this specific worker thread
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     
-    def worker():
-        # Force a completely blank event loop so Playwright doesn't panic
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    try:
+        # Attempt to scrape the product
+        result = check_product(prod)
         
-        try:
-            # Attempt to scrape the product
-            res['data'] = check_product(prod)
-            
-        except Exception as e:
-            # If Playwright times out or crashes, catch it gracefully!
-            # Grab just the first line of the error to keep the Telegram message clean
-            error_msg = str(e).splitlines()[0] if str(e) else "Unknown scraper error"
-            res['data'] = {
-                "price": None,
-                "available": None,
-                "error": f"Scrape failed: {error_msg}"
-            }
-            
-        finally:
-            # CRITICAL: Prevent memory leaks on Render by destroying the loop
-            loop.close()
-            
-    # Run the worker in a raw OS thread
-    t = threading.Thread(target=worker)
-    t.start()
-    t.join()
-    
-    # Guarantee a dictionary is returned to prevent AttributeError exceptions
-    return res.get('data') or {
-        "price": None, 
-        "available": None, 
-        "error": "Thread crashed silently"
-    }
+        # Guarantee a dictionary is returned to prevent AttributeError exceptions
+        if isinstance(result, dict):
+            return result
+        return {"price": None, "available": None, "error": "Invalid format returned by scraper"}
+        
+    except Exception as e:
+        # If Playwright times out or crashes, catch it gracefully!
+        error_msg = str(e).splitlines()[0] if str(e) else "Unknown scraper error"
+        return {
+            "price": None,
+            "available": None,
+            "error": f"Scrape failed: {error_msg}"
+        }
+        
+    finally:
+        # CRITICAL: Prevent memory leaks on Render by destroying the loop
+        loop.close()
 
 
 # ---------------------------------------------------------------------
@@ -451,6 +440,7 @@ async def check_command(
 
         results = []
 
+        # Iterate through products completely sequentially to save memory on Render
         for product in products:
             product_name = product.get(
                 "product_name",
