@@ -1,4 +1,3 @@
-import concurrent.futures
 import asyncio
 import os
 
@@ -38,6 +37,59 @@ WEBSITES = {
     "9": "MuscleBlaze",
 }
 
+
+# ---------------------------------------------------------------------
+# ISOLATED PLAYWRIGHT THREAD (OPTIMIZED)
+# ---------------------------------------------------------------------
+def run_isolated_check(prod):
+    """
+    Runs the blocking Playwright scraper in a completely isolated OS thread.
+    Includes strict garbage collection and crash prevention.
+    """
+    import threading
+    import asyncio
+    
+    res = {}
+    
+    def worker():
+        # Force a completely blank event loop so Playwright doesn't panic
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            # Attempt to scrape the product
+            res['data'] = check_product(prod)
+            
+        except Exception as e:
+            # If Playwright times out or crashes, catch it gracefully!
+            # Grab just the first line of the error to keep the Telegram message clean
+            error_msg = str(e).splitlines()[0] if str(e) else "Unknown scraper error"
+            res['data'] = {
+                "price": None,
+                "available": None,
+                "error": f"Scrape failed: {error_msg}"
+            }
+            
+        finally:
+            # CRITICAL: Prevent memory leaks on Render by destroying the loop
+            loop.close()
+            
+    # Run the worker in a raw OS thread
+    t = threading.Thread(target=worker)
+    t.start()
+    t.join()
+    
+    # Guarantee a dictionary is returned to prevent AttributeError exceptions
+    return res.get('data') or {
+        "price": None, 
+        "available": None, 
+        "error": "Thread crashed silently"
+    }
+
+
+# ---------------------------------------------------------------------
+# BOT COMMANDS
+# ---------------------------------------------------------------------
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -414,24 +466,7 @@ async def check_command(
             product_url = product.get("product_url", "")
 
             try:
-                # Offload the blocking Playwright call to a background thread
-                def run_isolated_check(prod):
-                    import threading
-                    import asyncio
-            
-                    res = {}
-                    def worker():
-                        # Force a completely blank event loop so Playwright doesn't panic
-                        asyncio.set_event_loop(asyncio.new_event_loop())
-                        res['data'] = check_product(prod)
-                        
-                    # Run the worker in a raw OS thread
-                    t = threading.Thread(target=worker)
-                    t.start()
-                    t.join()
-                    return res.get('data')
-
-                # Offload the raw thread so it doesn't block Telegram's main loop
+                # Offload the safe, self-contained thread to avoid blocking Telegram
                 result = await asyncio.to_thread(run_isolated_check, product)
 
                 price = result.get("price")
